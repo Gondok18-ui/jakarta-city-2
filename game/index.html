@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Jakarta City</title>
+<link rel="icon" href="data:,">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0d1524; font-family: 'Segoe UI', Arial, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hidden { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #topright { position: absolute; top: 12px; right: 16px; text-align: right; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.65); }
+  #money { font-size: 26px; font-weight: 800; color: #7ae08a; letter-spacing: .5px; }
+  #clock { font-size: 19px; font-weight: 700; }
+  #stars { font-size: 22px; min-height: 26px; letter-spacing: 3px; }
+  #weather { font-size: 12px; opacity: .85; }
+  #bars { position: absolute; right: 16px; top: 108px; width: 170px; }
+  .bar { height: 11px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.5); margin-top: 4px; }
+  .bar > div { height: 100%; width: 100%; }
+  #healthfill { background: #e33f2e; }
+  #armorfill { background: #7ab8e0; }
+  #weaponbox { position: absolute; left: 16px; bottom: 16px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,.7); }
+  #weapon { font-size: 20px; font-weight: 800; letter-spacing: 1px; }
+  #ammo { font-size: 17px; color: #ffc93f; font-weight: 700; }
+  #radio { display: none; margin-bottom: 6px; max-width: 300px; }
+  #radio-station { font-size: 13px; font-weight: 800; color: #ffc93f; }
+  #radio-clip { overflow: hidden; width: 300px; white-space: nowrap; }
+  #radio-text { display: inline-block; font-size: 12.5px; color: #e8f2ff; }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 72vw; text-align: center;
+    color: #ffd76a; font-size: 16.5px; font-weight: 700; text-shadow: 0 2px 5px rgba(0,0,0,.8); opacity: 0; transition: opacity .3s; }
+  #zone { position: absolute; top: 21%; left: 0; right: 0; text-align: center; color: #fff; opacity: 0; transition: opacity .5s;
+    font-size: clamp(26px, 5.4vw, 46px); font-weight: 900; letter-spacing: 4px; text-shadow: 0 3px 0 rgba(0,0,0,.45), 0 6px 18px rgba(0,0,0,.6); }
+  #banner { position: absolute; top: 34%; left: 0; right: 0; text-align: center; opacity: 0; transition: opacity .4s; }
+  #banner-title { font-size: clamp(28px, 6vw, 52px); font-weight: 900; letter-spacing: 5px; color: #ffc93f;
+    text-shadow: 0 3px 0 rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.65); }
+  #banner-sub { font-size: clamp(14px, 2.4vw, 20px); color: #fff; font-weight: 700; text-shadow: 0 2px 6px rgba(0,0,0,.8); margin-top: 4px; }
+  #toast { position: absolute; bottom: 148px; left: 50%; transform: translateX(-50%); max-width: 84vw; text-align: center;
+    background: rgba(10,14,20,.78); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 15px; opacity: 0; transition: opacity .3s; }
+  #prompt { position: absolute; bottom: 108px; left: 50%; transform: translateX(-50%); max-width: 88vw; text-align: center;
+    background: rgba(10,14,20,.82); color: #ffd76a; padding: 7px 14px; border-radius: 8px; font-size: 15px; font-weight: 700; opacity: 0; transition: opacity .2s; }
+  #dialog { display: none; position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%); width: min(680px, 92vw);
+    background: rgba(8,10,16,.88); border-left: 4px solid #ffc93f; border-radius: 6px; padding: 12px 16px; color: #fff; pointer-events: none; }
+  #dlg-who { color: #ffc93f; font-weight: 900; font-size: 13px; letter-spacing: 2px; margin-bottom: 3px; }
+  #dlg-text { font-size: 16.5px; line-height: 1.35; }
+  #dlg-hint { font-size: 11px; opacity: .6; margin-top: 5px; }
+  #minimap { position: absolute; right: 14px; bottom: 14px; width: 176px; height: 176px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.75); box-shadow: 0 4px 18px rgba(0,0,0,.5); background: #20301e; }
+  #speedo { display: none; position: absolute; right: 22px; bottom: 198px; text-align: center; color: #fff; text-shadow: 0 2px 5px rgba(0,0,0,.7); }
+  #speed-val { font-size: 34px; font-weight: 900; }
+  #speedo small { font-size: 11px; letter-spacing: 2px; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%;
+    background: rgba(255,255,255,.9); box-shadow: 0 0 5px rgba(0,0,0,.8); }
+  #dmg { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(200,20,10,.55) 100%); }
+  #mapwrap { display: none; position: fixed; inset: 0; z-index: 20; background: rgba(5,10,16,.82);
+    align-items: center; justify-content: center; flex-direction: column; pointer-events: auto; }
+  #worldmap { width: min(92vw, 760px); height: auto; border: 2px solid rgba(255,255,255,.4); border-radius: 8px; }
+  #maphint { color: #fff; margin-top: 8px; font-size: 13px; opacity: .8; }
+  #endcard { display: none; position: fixed; inset: 0; z-index: 30; background: rgba(5,5,10,.55);
+    align-items: center; justify-content: center; flex-direction: column; }
+  #end-title { font-size: clamp(44px, 11vw, 96px); font-weight: 900; letter-spacing: 10px; text-shadow: 0 4px 0 rgba(0,0,0,.6); }
+  #end-sub { color: #fff; font-size: 17px; margin-top: 8px; text-shadow: 0 2px 6px #000; }
+
+  /* ---------- menu ---------- */
+  #menu { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: linear-gradient(180deg, rgba(10,16,28,.18) 0%, rgba(10,16,28,.05) 45%, rgba(10,16,28,.55) 100%); }
+  #menu h1 { color: #fff; font-size: clamp(44px, 10vw, 96px); font-weight: 900; letter-spacing: 8px; text-align: center;
+    text-shadow: 0 4px 0 rgba(0,0,0,.35), 0 10px 34px rgba(0,0,0,.6); }
+  #menu h2 { color: #ffc93f; font-size: clamp(15px, 3vw, 24px); font-weight: 800; letter-spacing: 9px; margin-top: 2px;
+    text-shadow: 0 2px 8px rgba(0,0,0,.7); }
+  #menubtns { display: flex; gap: 12px; margin-top: 44px; flex-wrap: wrap; justify-content: center; padding: 0 12px; }
+  .mbtn { pointer-events: auto; cursor: pointer; background: rgba(12,16,24,.85); color: #fff; border: 2px solid rgba(255,255,255,.55);
+    font-size: 16px; font-weight: 800; letter-spacing: 2px; padding: 12px 22px; border-radius: 6px; min-width: 158px; }
+  .mbtn:hover { background: #ffc93f; color: #14161a; border-color: #ffc93f; }
+  #btn-continue, #btn-load { display: none; }
+  #controls { display: none; margin-top: 20px; background: rgba(8,12,20,.88); color: #e8f2ff; border-radius: 8px;
+    padding: 14px 20px; font-size: 14px; line-height: 1.75; max-width: min(560px, 92vw); }
+  #controls b { color: #ffc93f; }
+  #menufoot { position: absolute; bottom: 14px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,.75); font-size: 12.5px; text-shadow: 0 1px 4px #000; }
+
+  /* ---------- shop ---------- */
+  #shop { display: none; position: fixed; inset: 0; z-index: 25; background: rgba(5,10,16,.7);
+    align-items: center; justify-content: center; pointer-events: auto; }
+  #shopbox { background: #141a24; border: 2px solid #ffc93f; border-radius: 10px; padding: 18px 20px; width: min(430px, 92vw); color: #fff; }
+  #shopbox h3 { color: #ffc93f; letter-spacing: 3px; margin-bottom: 10px; }
+  .shop-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.12); font-size: 14.5px; }
+  .shop-row b { flex: 1.1; }
+  .shop-row span { flex: 1.4; opacity: .85; font-size: 13px; }
+  .shop-row button { background: #ffc93f; border: 0; font-weight: 800; padding: 7px 12px; border-radius: 5px; cursor: pointer; }
+  #shop-close { margin-top: 12px; width: 100%; background: #2a3444; color: #fff; border: 1px solid rgba(255,255,255,.4);
+    padding: 9px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+
+  /* ---------- touch ---------- */
+  #touch { display: none; position: fixed; inset: 0; z-index: 15; pointer-events: none; }
+  #stick { position: absolute; left: 22px; bottom: 108px; width: 118px; height: 118px; border-radius: 50%;
+    background: rgba(255,255,255,.10); border: 2px solid rgba(255,255,255,.35); pointer-events: auto; }
+  #knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+    background: rgba(255,255,255,.35); }
+  .tbtn { position: absolute; width: 62px; height: 62px; border-radius: 50%; background: rgba(12,16,24,.6);
+    border: 2px solid rgba(255,255,255,.5); color: #fff; font-weight: 800; font-size: 12.5px; pointer-events: auto;
+    display: flex; align-items: center; justify-content: center; }
+  .tbtn.on { background: #ffc93f; color: #14161a; }
+  #btn-act { right: 22px; bottom: 108px; }
+  #btn-fire { right: 96px; bottom: 66px; }
+  #btn-run { right: 22px; bottom: 182px; }
+  #btn-map { right: 96px; bottom: 140px; }
+  #btn-cheat { right: 22px; bottom: 256px; width: 52px; height: 52px; font-size: 10.5px; }
+  #cheatrow { display: none; position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 26;
+    background: rgba(8,12,20,.92); padding: 8px; border-radius: 8px; gap: 6px; pointer-events: auto; }
+  #cheattext { background: #0d1420; color: #7ae08a; border: 1px solid rgba(255,255,255,.4); border-radius: 5px;
+    padding: 8px; font-size: 15px; letter-spacing: 2px; text-transform: uppercase; width: 180px; }
+  #cheatgo { background: #ffc93f; border: 0; font-weight: 800; padding: 8px 14px; border-radius: 5px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div id="topright">
+    <div id="money">Rp 250,000</div>
+    <div id="clock">12:00</div>
+    <div id="stars"></div>
+    <div id="weather"></div>
+  </div>
+  <div id="bars">
+    <div class="bar"><div id="healthfill"></div></div>
+    <div class="bar" id="armorbar" style="display:none"><div id="armorfill"></div></div>
+  </div>
+  <div id="objective"></div>
+  <div id="zone"></div>
+  <div id="banner"><div id="banner-title"></div><div id="banner-sub"></div></div>
+  <div id="weaponbox">
+    <div id="radio"><div id="radio-station"></div><div id="radio-clip"><span id="radio-text"></span></div></div>
+    <div id="weapon">FISTS</div>
+    <div id="ammo"></div>
+  </div>
+  <canvas id="minimap" width="176" height="176"></canvas>
+  <div id="speedo"><div id="speed-val">0</div><small>KM/H</small></div>
+  <div id="crosshair"></div>
+  <div id="toast"></div>
+  <div id="prompt"></div>
+  <div id="dialog"><div id="dlg-who"></div><div id="dlg-text"></div><div id="dlg-hint">E / tap to continue</div></div>
+</div>
+<div id="dmg"></div>
+<div id="mapwrap"><canvas id="worldmap" width="860" height="620"></canvas><div id="maphint">M or tap the map to close</div></div>
+<div id="endcard"><div id="end-title"></div><div id="end-sub"></div></div>
+
+<div id="shop"><div id="shopbox">
+  <h3>GUN SHOP</h3>
+  <div id="shop-list"></div>
+  <button id="shop-close">Close (E)</button>
+</div></div>
+
+<div id="touch">
+  <div id="stick"><div id="knob"></div></div>
+  <div class="tbtn" id="btn-act">ACT</div>
+  <div class="tbtn" id="btn-fire">FIRE</div>
+  <div class="tbtn" id="btn-run">RUN</div>
+  <div class="tbtn" id="btn-map">MAP</div>
+  <div class="tbtn" id="btn-cheat">CHEAT</div>
+</div>
+<div id="cheatrow"><input id="cheattext" placeholder="CHEAT CODE" autocomplete="off"><button id="cheatgo">GO</button></div>
+
+<div id="menu">
+  <h1>JAKARTA CITY</h1>
+  <h2>OPEN WORLD GAME</h2>
+  <div id="menubtns">
+    <button class="mbtn" id="btn-new">NEW GAME</button>
+    <button class="mbtn" id="btn-continue">CONTINUE</button>
+    <button class="mbtn" id="btn-load">LOAD GAME</button>
+    <button class="mbtn" id="btn-controls">CONTROLS</button>
+  </div>
+  <div id="controls">
+    <b>W A S D</b> — walk / drive &nbsp;·&nbsp; <b>Mouse drag</b> — camera &nbsp;·&nbsp; <b>Click</b> — shoot / punch<br>
+    <b>E</b> — interact, enter &amp; exit vehicles &nbsp;·&nbsp; <b>Shift</b> — run &nbsp;·&nbsp; <b>Space</b> — handbrake<br>
+    <b>1–6</b> — weapons &nbsp;·&nbsp; <b>R</b> — radio &nbsp;·&nbsp; <b>M</b> — world map &nbsp;·&nbsp; <b>Wheel</b> — camera zoom<br>
+    Cheat codes can be typed at any time. On touch devices use the on-screen stick and buttons.
+  </div>
+  <div id="menufoot">An original open-world game set in a fictionalised Jakarta · No real brands, no third-party assets</div>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
